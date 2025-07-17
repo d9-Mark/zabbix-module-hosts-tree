@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [6.0.2] - 2025-07-18
+### Changed
+- Fixed call to undefined function getHostDashboards for Zabbix >= 7.0.14
+
 ## [2.0.1] - 2023-06-24
 ### Changed
 - Fixed bug with showing &nbsp; in browser for Zabbix >= 6.0.18
