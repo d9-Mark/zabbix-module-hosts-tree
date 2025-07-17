@@ -27,6 +27,7 @@ use API;
 use CArrayHelper;
 use CUrl;
 use CPagerHelper;
+use CApiHostHelper;
 
 abstract class CControllerBGHost extends CController {
 
@@ -312,9 +313,14 @@ abstract class CControllerBGHost extends CController {
 		}
 		unset($group);
 
+		// Count number of dashboards for each host.
+		$hosts_dashboards = array_replace(
+			array_fill_keys(array_column($hosts, 'hostid', 'hostid'), 0),
+			$this->getHostsDashboardsCount($hosts)
+		);
+
 		foreach ($hosts as &$host) {
-			// Count number of dashboards for each host.
-			$host['dashboards'] = count(getHostDashboards($host['hostid']));
+			$host['dashboards'] = $hosts_dashboards[$host['hostid']];
 
 			CArrayHelper::sort($host['interfaces'], [['field' => 'main', 'order' => ZBX_SORT_DOWN]]);
 
@@ -384,6 +390,21 @@ abstract class CControllerBGHost extends CController {
                         'host_groups' => $host_groups_to_show,
 			'maintenances' => $maintenances
 		];
+	}
+
+	protected function getHostsDashboardsCount(array $hosts): array {
+		$hosts_dashboards = [];
+
+		foreach ($hosts as $host) {
+			$templateids = CApiHostHelper::getParentTemplates([$host['hostid']])[1];
+			$hosts_dashboards[$host['hostid']] = count(API::TemplateDashboard()->get([
+				'output' => ['dashboardid'],
+				'templateids' => $templateids,
+				'preservekeys' => true
+			]));
+		}
+
+		return $hosts_dashboards;
 	}
 
 	// Adds all hosts belonging to $host_group_name to global array $hosts_sorted_by_group
