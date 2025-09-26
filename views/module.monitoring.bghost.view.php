@@ -23,14 +23,14 @@
  * @var CView $this
  */
 
-$this->addJsFile('multiselect.js');
 $this->addJsFile('layout.mode.js');
-$this->addJsFile('menupopup.js');
-$this->addJsFile('gtlc.js');
-$this->addJsFile('class.calendar.js');
 $this->addJsFile('class.tabfilter.js');
 $this->addJsFile('class.tabfilteritem.js');
 $this->addJsFile('class.tagfilteritem.js');
+$this->addJsFile('items.js');
+$this->addJsFile('multilineinput.js');
+
+$this->includeJsFile('monitoring.host.view.js.php');
 
 $this->enableLayoutModes();
 $web_layout_mode = $this->getLayoutMode();
@@ -64,7 +64,7 @@ else {
 
 $widget->addItem((new CForm())->setName('host_view')->addClass('is-loading'));
 $widget->show();
-$this->includeJsFile('monitoring.host.view.js.php', $data);
+
 $this->addCssFile('modules/zabbix-module-hosts-tree/views/css/bghost.css');
 
 (new CScriptTag('

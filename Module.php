@@ -3,6 +3,11 @@
 namespace Modules\BGmotHosts;
  
 use APP;
+use CControllerHost;
+use CControllerProblem;
+use CControllerLatest;
+use Modules\BGmotHosts\Actions\CControllerBGHost;
+use CControllerTabFilterProfileUpdate;
 use CController as CAction;
  
 class Module extends \Zabbix\Core\CModule {
@@ -25,6 +30,12 @@ class Module extends \Zabbix\Core\CModule {
 	 * @param CAction $action  Action instance responsible for current request.
 	 */
 	public function onBeforeAction(CAction $action): void {
+		CControllerTabFilterProfileUpdate::$namespaces = [
+                CControllerHost::FILTER_IDX => CControllerHost::FILTER_FIELDS_DEFAULT,
+				CControllerBGHost::FILTER_IDX => CControllerBGHost::FILTER_FIELDS_DEFAULT,
+				CControllerProblem::FILTER_IDX => CControllerProblem::FILTER_FIELDS_DEFAULT,
+                CControllerLatest::FILTER_IDX => CControllerLatest::FILTER_FIELDS_DEFAULT
+        ];
 	}
  
 	/**
