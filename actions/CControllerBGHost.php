@@ -34,6 +34,9 @@ abstract class CControllerBGHost extends CController {
 	// Filter idx prefix.
 	const FILTER_IDX = 'web.monitoring.bghosts';
 
+	// Maximum number of Hosts on the page.
+	const HOSTS_LIMIT = 5000;
+
 	// Filter fields default values.
 	const FILTER_FIELDS_DEFAULT = [
 		'name' => '',
@@ -95,7 +98,7 @@ abstract class CControllerBGHost extends CController {
 					? null
 					: HOST_MAINTENANCE_STATUS_OFF
 			],
-			'limit' => CSettingsHelper::get(CSettingsHelper::SEARCH_LIMIT) + 1
+			'limit' => $this::HOSTS_LIMIT
 		]);
 	}
 
@@ -121,7 +124,6 @@ abstract class CControllerBGHost extends CController {
 	 * @return array
 	 */
 	protected function getData(array $filter): array {
-		$limit = CSettingsHelper::get(CSettingsHelper::SEARCH_LIMIT) + 1;
 		$groupids = $filter['groupids'] ? getSubGroups($filter['groupids']) : null;
 		$hosts = API::Host()->get([
 			'output' => ['hostid', 'name', 'status'],
@@ -147,7 +149,7 @@ abstract class CControllerBGHost extends CController {
 			],
                         'selectHostGroups' => ['groupid', 'name'],
 			'sortfield' => 'name',
-			'limit' => $limit,
+			'limit' => $this::HOSTS_LIMIT,
 			'preservekeys' => true
 		]);
 
@@ -195,9 +197,6 @@ abstract class CControllerBGHost extends CController {
 		}
 
 		$view_curl = (new CUrl())->setArgument('action', 'bghost.view');
-
-		// Split result array and create paging.
-		$paging = CPagerHelper::paginate($filter['page'], $hosts_sorted_by_group, $filter['sortorder'], $view_curl);
 
 		// Get additional data to limited host amount.
 		$hosts = API::Host()->get([
@@ -250,8 +249,7 @@ abstract class CControllerBGHost extends CController {
 
 		$filter['sortorder'] == 'ASC' ? ksort($host_groups_to_show) : krsort($host_groups_to_show);
 
-		// Some hosts for shown groups can be on other pages thus not in $hosts_sorted_by_group
-		// as we already applied paging. To calculate number of problems we need all hosts belonging to shown groups
+		// To calculate number of problems we need all hosts belonging to shown groups
 		$all_hosts_in_groups_to_show = [];
 		foreach ($host_groups_to_show as $group_name => $group) {
 			foreach ($host_groups[$group_name]['hosts'] as $host) {
@@ -385,7 +383,6 @@ abstract class CControllerBGHost extends CController {
 		unset($host);
 
 		return [
-			'paging' => $paging,
 			'hosts' => $hosts,
                         'host_groups' => $host_groups_to_show,
 			'maintenances' => $maintenances

@@ -53,7 +53,7 @@ foreach ($data['host_groups'] as $group_name => $group) {
 	}
 }
 
-$form->addItem([$table,	$data['paging']]);
+$form->addItem([$table]);
 
 echo $form;
 
