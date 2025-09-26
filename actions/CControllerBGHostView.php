@@ -135,7 +135,7 @@ class CControllerBGHostView extends CControllerBGHost {
 		] + $this->getData($filter);
 
 		$response = new CControllerResponseData($data);
-		$response->setTitle(_('Hosts'));
+		$response->setTitle(_('Hosts tree'));
 		$this->setResponse($response);
 	}
 }
