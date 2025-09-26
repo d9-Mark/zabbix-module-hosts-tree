@@ -36,7 +36,7 @@ $this->enableLayoutModes();
 $web_layout_mode = $this->getLayoutMode();
 
 $widget = (new CHtmlPage())
-	->setTitle(_('Hosts'))
+	->setTitle(_('Hosts tree'))
 	->setWebLayoutMode($web_layout_mode)
 	->setControls(
 		(new CTag('nav', true, (new CList())->addItem(get_icon('kioskmode', ['mode' => $web_layout_mode]))))
