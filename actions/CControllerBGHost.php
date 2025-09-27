@@ -382,9 +382,22 @@ abstract class CControllerBGHost extends CController {
 		}
 		unset($host);
 
+		$items_count = API::Item()->get([
+				'countOutput' => true,
+				'groupCount' => true,
+				'hostids' => array_keys($hosts),
+				'webitems' =>true,
+				'monitored' => true
+		]);
+		$items_count = $items_count ? array_column($items_count, 'rowscount', 'hostid') : [];
+		foreach ($hosts as &$host) {
+			$host['items_count'] = array_key_exists($host['hostid'], $items_count) ? $items_count[$host['hostid']] : 0;
+		}
+		unset($host);
+
 		return [
 			'hosts' => $hosts,
-                        'host_groups' => $host_groups_to_show,
+			'host_groups' => $host_groups_to_show,
 			'maintenances' => $maintenances
 		];
 	}

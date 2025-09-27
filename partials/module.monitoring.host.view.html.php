@@ -152,9 +152,10 @@ function addGroupRow($data, &$rows, $group_name, $parent_group_name, $level, &$c
 						(new CUrl('zabbix.php'))
 							->setArgument('action', 'latest.view')
 							->setArgument('filter_set', '1')
-							->setArgument('filter_hostids', [$host['hostid']])
+							->setArgument('hostids', [$host['hostid']])
 					)
-					: _('Latest data')
+					: (new CSpan(_('Latest data')))->addClass(ZBX_STYLE_DISABLED),
+                    CViewHelper::showNum($host['items_count'])
 			],
 			[
 				$data['allowed_ui_problems']
