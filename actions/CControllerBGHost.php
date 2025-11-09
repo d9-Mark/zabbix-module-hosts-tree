@@ -208,7 +208,6 @@ abstract class CControllerBGHost extends CController {
 					if ($groups[$g_name]['is_collapsed']) // The group is collapsed
 						continue;
 					$hosts_of_sub_group = $this->get_hosts_for_group($groups, $g_name, $groups[$g_name], $filter);
-					//$groups[$g_name]['hosts'] = array_column($hosts_of_sub_group, 'hostid');
 				}
 			}
 		} else if (!array_key_exists('hosts', $group_data)) {
@@ -245,6 +244,8 @@ abstract class CControllerBGHost extends CController {
 			'preservekeys' => true,
 			'limit' => $search_limit
 		]);
+
+		$hosts = $this->array_sort($hosts, 'name', $filter['sortorder']);
 
 		$host_ids = array_column($hosts, 'hostid');
 		$groups[$group_name]['hosts'] = $host_ids;
@@ -417,6 +418,39 @@ abstract class CControllerBGHost extends CController {
 		$host_groups[$groupname_full]['parent_group_name'] = $parent_group_name;
 		// Sort group names
 		$filter['sortorder'] == 'ASC' ? sort($host_groups[$parent_group_name]['children']) : rsort($host_groups[$parent_group_name]['children']);
+	}
+
+	protected function array_sort($array, $on, $order='ASC')
+	{
+		$new_array = array();
+		$sortable_array = array();
+
+		if (count($array) > 0) {
+			foreach ($array as $k => $v) {
+				if (is_array($v)) {
+					foreach ($v as $k2 => $v2) {
+						if ($k2 == $on) {
+							$sortable_array[$k] = $v2;
+						}
+					}
+				} else {
+					$sortable_array[$k] = $v;
+				}
+			}
+			switch ($order) {
+				case 'ASC':
+					asort($sortable_array, SORT_NATURAL);
+					break;
+				case 'DESC':
+					arsort($sortable_array, SORT_NATURAL);
+					break;
+			}
+			foreach ($sortable_array as $k => $v) {
+				$new_array[$k] = $array[$k];
+			}
+		}
+
+		return $new_array;
 	}
 
 	/**
