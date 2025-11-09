@@ -32,7 +32,6 @@ $table->setHeader([
 	(new CColHeader(_('Availability'))),
 	(new CColHeader(_('Tags'))),
 	// Fix: problems renamed to triggers to distinguish from the problems counter column
-	(new CColHeader(_('Problems'))),
 	make_sorting_header(_('Status'), 'status', $data['sort'], $data['sortorder'], $view_url),
 	(new CColHeader(_('Latest data'))),
 	(new CColHeader(_('Problems'))),
@@ -53,7 +52,7 @@ foreach ($data['host_groups'] as $group_name => $group) {
 	}
 }
 
-$form->addItem([$table]);
+$form->addItem([$table, $data['paging']]);
 
 echo $form;
 
@@ -65,9 +64,11 @@ function addGroupRow($data, &$rows, $group_name, $parent_group_name, $level, &$c
 
 	$host_rows = [];
 	foreach ($group['hosts'] as $hostid) {
+		if (!array_key_exists($hostid, $data['hosts']))
+			continue;
+
 		$host = $data['hosts'][$hostid];
 		$host_name = (new CLinkAction($host['name']))->setMenuPopup(CMenuPopupHelper::getHost($hostid));
-
 		$interface = null;
 		if ($host['interfaces']) {
                         foreach ($host['interfaces'] as $index => $value) {
@@ -116,33 +117,17 @@ function addGroupRow($data, &$rows, $group_name, $parent_group_name, $level, &$c
 			$problems_link->addClass(ZBX_STYLE_PROBLEM_ICON_LINK);
 		}
 
-		$maintenance_icon = '';
-
-		if ($host['status'] == HOST_STATUS_MONITORED && $host['maintenance_status'] == HOST_MAINTENANCE_STATUS_ON) {
-			if (array_key_exists($host['maintenanceid'], $data['maintenances'])) {
-				$maintenance = $data['maintenances'][$host['maintenanceid']];
-				$maintenance_icon = makeMaintenanceIcon($host['maintenance_type'], $maintenance['name'],
-					$maintenance['description']
-				);
-			}
-			else {
-				$maintenance_icon = makeMaintenanceIcon($host['maintenance_type'],
-					_('Inaccessible maintenance'), ''
-				);
-			}
-		}
-
 		$col1 = new CCol();
 		for($i = 0; $i <= (6 + $level*5); $i++) {
 			$col1 -> addItem(NBSP_BG());
 		}
-		$col1 -> addItem($host_name) -> addItem($maintenance_icon);
+		$col1 -> addItem($host_name); //+++ -> addItem($maintenance_icon);
 		$table_row_host = new CRow([
 			$col1,
 			(new CCol(getHostInterface($interface)))->addClass(ZBX_STYLE_NOWRAP),
 			getHostAvailabilityTable($host['interfaces']),
 			$host['tags'],
-			$problems_link,
+			//+++$problems_link,
 			($host['status'] == HOST_STATUS_MONITORED)
 				? (new CSpan(_('Enabled')))->addClass(ZBX_STYLE_GREEN)
 				: (new CSpan(_('Disabled')))->addClass(ZBX_STYLE_RED),
@@ -157,18 +142,7 @@ function addGroupRow($data, &$rows, $group_name, $parent_group_name, $level, &$c
 					: (new CSpan(_('Latest data')))->addClass(ZBX_STYLE_DISABLED),
                     CViewHelper::showNum($host['items_count'])
 			],
-			[
-				$data['allowed_ui_problems']
-					? new CLink(_('Problems'),
-						(new CUrl('zabbix.php'))
-							->setArgument('action', 'problem.view')
-							->setArgument('filter_name', '')
-							->setArgument('severities', $data['filter']['severities'])
-							->setArgument('hostids', [$host['hostid']])
-					)
-					: _('Problems'),
-				CViewHelper::showNum($total_problem_count)
-			],
+			$problems_link,
 			$host['graphs']
 				? [
 					new CLink(_('Graphs'),
@@ -260,7 +234,9 @@ function addGroupRow($data, &$rows, $group_name, $parent_group_name, $level, &$c
 			-> setColSpan(6)
 	]);
 
-	if ($data['host_groups'][$group_name]['is_collapsed'] && $parent_group_name != '')
+	if ($data['host_groups'][$group_name]['is_collapsed'] && 
+		$parent_group_name != '' &&
+		$data['host_groups'][$parent_group_name]['is_collapsed'])
 		$table_row->addClass(ZBX_STYLE_DISPLAY_NONE);
 
 	// We don't render here, but just add rows to the array

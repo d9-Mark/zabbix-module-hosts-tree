@@ -54,7 +54,8 @@ class CControllerBGHostViewRefresh extends CControllerBGHostView {
 		else {
 			$this->getInputs($filter, array_keys($filter));
 			$filter = $this->cleanInput($filter);
-			$prepared_data = $this->getData($filter);
+			$expanded_groups = explode(',', $this->getInput('expanded_groups', '0'));
+			$prepared_data = $this->getData($filter, $expanded_groups);
 
 			$view_url = (new CUrl())
 				->setArgument('action', 'bghost.view')
@@ -68,6 +69,7 @@ class CControllerBGHostViewRefresh extends CControllerBGHostView {
 				'allowed_ui_latest_data' => $this->checkAccess(CRoleHelper::UI_MONITORING_LATEST_DATA),
 				'allowed_ui_problems' => $this->checkAccess(CRoleHelper::UI_MONITORING_PROBLEMS)
 			] + $prepared_data;
+
 			$response = new CControllerResponseData($data);
 			$this->setResponse($response);
 		}

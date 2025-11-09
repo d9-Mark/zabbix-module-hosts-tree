@@ -56,7 +56,8 @@ class CControllerBGHostView extends CControllerBGHost {
 			'filter_show_counter' =>	'in 1,0',
 			'filter_counters' =>		'in 1',
 			'filter_reset' =>		'in 1',
-			'counter_index' =>		'ge 0'
+			'counter_index' =>		'ge 0',
+			'expanded_groups' =>	'string'
 		];
 
 		$ret = $this->validateInput($fields);
@@ -116,6 +117,11 @@ class CControllerBGHostView extends CControllerBGHost {
 		$refresh_curl = new CUrl('zabbix.php');
 		$filter['action'] = 'bghost.view.refresh';
 		array_map([$refresh_curl, 'setArgument'], array_keys($filter), $filter);
+		$expanded_groups = [];
+		if ($this->hasInput('expanded_groups')) {
+			$expanded_groups = explode(",", $this->getInput('expanded_groups'));
+			$refresh_curl->setArgument('expanded_groups', $this->getInput('expanded_groups'));
+		}
 
 		$data = [
 			'refresh_url' => $refresh_curl->getUrl(),
@@ -132,7 +138,7 @@ class CControllerBGHostView extends CControllerBGHost {
 				'page' => $filter['page'],
 				'csrf_token' => CCsrfTokenHelper::get('tabfilter')
 			]
-		] + $this->getData($filter);
+		] + $this->getData($filter, $expanded_groups);
 
 		$response = new CControllerResponseData($data);
 		$response->setTitle(_('Hosts tree'));
