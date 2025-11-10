@@ -200,7 +200,6 @@ abstract class CControllerBGHost extends CController {
 	protected function get_hosts_for_group(&$groups, $group_name, $group_data, $filter) {
 		$groupid = $group_data['groupid'];
 		$search_limit = CSettingsHelper::get(CSettingsHelper::SEARCH_LIMIT) + 1;
-
 		$hosts_of_sub_group = [];
 		if ($group_data['children']) {
 			foreach ($group_data['children'] as $g_name) {
@@ -353,13 +352,12 @@ abstract class CControllerBGHost extends CController {
 				}
 			}
 			$host_data['tags'] = $tags;
-
-			$tags = makeTags($hosts, true, 'hostid', ZBX_TAG_COUNT_DEFAULT, $filter['tags']);
-			foreach ($hosts as &$host) {
-				$host['tags'] = $tags[$host['hostid']];
-			}
-			unset($host);
 		} // for all hosts in the group
+
+		$tags = makeTags($hosts, true, 'hostid', ZBX_TAG_COUNT_DEFAULT, $filter['tags']);
+		foreach ($hosts as &$host) {
+			$host['tags'] = $tags[$host['hostid']];
+		}
 
 		return $hosts_of_sub_group + $hosts;
 	}
