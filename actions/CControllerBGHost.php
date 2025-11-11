@@ -309,7 +309,7 @@ abstract class CControllerBGHost extends CController {
 						for ($i = count($grp_arr)-1, $g_name_child = $group_name; $i > 0; $i--) {
 							array_pop($grp_arr);
 							$g_name_parent = implode('/', $grp_arr);
-							$host_groups[$g_name_parent]['problem_count'][$severity] +=
+							$groups[$g_name_parent]['problem_count'][$severity] +=
 								count($host_problems[$hostid][$severity]);
 							$g_name_child = $g_name_parent;
 						}
