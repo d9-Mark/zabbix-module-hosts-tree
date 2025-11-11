@@ -26,6 +26,9 @@ $table = (new CTableInfo());
 
 $view_url = $data['view_curl']->getUrl();
 
+$at_least_one_host_to_show = false;
+$paging_line_added = false;
+
 $table->setHeader([
 	make_sorting_header(_('Name'), 'name', $data['sort'], $data['sortorder'], $view_url),
 	(new CColHeader(_('Interface'))),
@@ -44,20 +47,23 @@ foreach ($data['host_groups'] as $group_name => $group) {
 	if ($group['parent_group_name'] == '') {
 		// Add only top level groups, children will be added recursively in addGroupRow()
 		$rows = [];
-		addGroupRow($data, $rows, $group_name, '', 0, $child_stat);
-
+		addGroupRow($data, $rows, $group_name, '', 0, $child_stat, $at_least_one_host_to_show, $paging_line_added, $form, $table);
 		foreach ($rows as $row) {
 			$table->addRow($row);
 		}
 	}
 }
 
-$form->addItem([$table, $data['paging']]);
+if (!$paging_line_added)
+	$form->addItem([$table, $data['paging']]);
+else
+	$form->addItem($table);
 
 echo $form;
 
 // Adds one Group to the table (recursively calls itself for all sub-groups)
-function addGroupRow($data, &$rows, $group_name, $parent_group_name, $level, &$child_stat) {
+function addGroupRow($data, &$rows, $group_name, $parent_group_name, $level, &$child_stat, &$at_least_one_host_to_show, &$paging_line_added, &$form, &$table) {
+
 	$interface_types = [INTERFACE_TYPE_AGENT, INTERFACE_TYPE_SNMP, INTERFACE_TYPE_JMX, INTERFACE_TYPE_IPMI];
 
 	$group = $data['host_groups'][$group_name];
@@ -66,6 +72,8 @@ function addGroupRow($data, &$rows, $group_name, $parent_group_name, $level, &$c
 	foreach ($group['hosts'] as $hostid) {
 		if (!array_key_exists($hostid, $data['hosts']))
 			continue;
+
+		$at_least_one_host_to_show = true;
 
 		$host = $data['hosts'][$hostid];
 		$host_name = (new CLinkAction($host['name']))->setMenuPopup(CMenuPopupHelper::getHost($hostid));
@@ -184,10 +192,18 @@ function addGroupRow($data, &$rows, $group_name, $parent_group_name, $level, &$c
 		$host_rows[] = $table_row_host;
 	}
 
+	if ($at_least_one_host_to_show && !$paging_line_added) {
+		$paging_line_added = true;
+		$col2 = (new CCol()) -> setColSpan(11);
+		$col2 -> addItem($data['paging']);
+		$paging_row = (new CRow([$col2]))->setAttribute('data-group_id_27', 27);
+		$host_rows[] = $paging_row;
+	}
+
 	$subgroup_rows=[];
 
 	foreach ($data['host_groups'][$group_name]['children'] as $child_group_name) {
-		addGroupRow($data, $subgroup_rows, $child_group_name, $group_name, $level + 1, $my_stat);
+		addGroupRow($data, $subgroup_rows, $child_group_name, $group_name, $level + 1, $my_stat, $at_least_one_host_to_show, $paging_line_added, $form, $table);
 	}
 
 
