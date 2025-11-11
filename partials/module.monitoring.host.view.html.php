@@ -129,13 +129,12 @@ function addGroupRow($data, &$rows, $group_name, $parent_group_name, $level, &$c
 		for($i = 0; $i <= (6 + $level*5); $i++) {
 			$col1 -> addItem(NBSP_BG());
 		}
-		$col1 -> addItem($host_name); //+++ -> addItem($maintenance_icon);
+		$col1 -> addItem($host_name);
 		$table_row_host = new CRow([
 			$col1,
 			(new CCol(getHostInterface($interface)))->addClass(ZBX_STYLE_NOWRAP),
 			getHostAvailabilityTable($host['interfaces']),
 			$host['tags'],
-			//+++$problems_link,
 			($host['status'] == HOST_STATUS_MONITORED)
 				? (new CSpan(_('Enabled')))->addClass(ZBX_STYLE_GREEN)
 				: (new CSpan(_('Disabled')))->addClass(ZBX_STYLE_RED),

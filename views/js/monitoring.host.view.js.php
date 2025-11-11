@@ -272,7 +272,6 @@
 					// This group exists in expanded_groups=
 					if (collapsed) {
 						// It's collapsed so remove it from expanded_groups=
-						//+++group_ids.splice(idx, 1);
 						group_ids.splice(idx);
 						if (group_ids.length > 0) {
 							this.refresh_simple_url += '&expanded_groups=' + group_ids.join(',');

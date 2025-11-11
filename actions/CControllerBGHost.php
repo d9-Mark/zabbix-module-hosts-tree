@@ -192,8 +192,8 @@ abstract class CControllerBGHost extends CController {
 		return [
 			'paging' => $paging,
 			'hosts' => $hosts_from_all_groups_hostid_as_key,
-			'host_groups' => $host_groups, //+++$host_groups_to_show,
-			'maintenances' => [] //+++$maintenances
+			'host_groups' => $host_groups,
+			'maintenances' => []
 		];
 	}
 
