@@ -206,12 +206,13 @@ abstract class CControllerBGHost extends CController {
 				if (array_key_exists($g_name, $groups)) { // The child group was not removed from "visible" on > 1 pages
 					if ($groups[$g_name]['is_collapsed']) // The group is collapsed
 						continue;
-					$hosts_of_sub_group = $this->get_hosts_for_group($groups, $g_name, $groups[$g_name], $filter);
+					return $this->get_hosts_for_group($groups, $g_name, $groups[$g_name], $filter);
 				}
 			}
 		} else if (!array_key_exists('hosts', $group_data)) {
 			return [];
 		}
+
 		$hosts = API::Host()->get([
 			'output' => ['hostid', 'name', 'status'],
 			'evaltype' => $filter['evaltype'],
