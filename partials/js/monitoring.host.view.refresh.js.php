@@ -82,7 +82,7 @@
 
 				if (data[gid].indexOf(group_id) > -1) { // This group is a child of data[i] group
 					parent_group_id = data[gid];
-					// Hide all other children
+					// Collapse all other children
 					for (var j in data[gid]) {
 						var child_group_id = data[gid][j];
 						if (child_group_id != group_id)
