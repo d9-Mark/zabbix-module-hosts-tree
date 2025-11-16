@@ -239,7 +239,26 @@ function addGroupRow($data, &$rows, $group_name, $parent_group_name, $level, &$c
 		$col2 -> addItem(NBSP_BG());
 	}
 	$col2 -> addItem($toggle_tag);
-	$col2 -> addItem(bold(end($group_name_arr)));
+
+
+	$expanded_groups = [$data['host_groups'][$group_name]['groupid']];
+	// Build all expanded groups if this group to be expanded (for URL)
+	$p_g_name = $data['host_groups'][$group_name]['parent_group_name'];
+	if ($p_g_name != '')
+		$expanded_groups = array_merge(add_expanded_parent_group($data, $group_name), $expanded_groups);
+
+	$col2 -> addItem(
+		bold(
+			new CLink(end($group_name_arr), (new CUrl('zabbix.php'))
+				->setArgument('action', 'bghost.view')
+				->setArgument('expanded_groups', implode(',', $expanded_groups))
+				->setArgument('status', $data['filter']['severities'])
+				->setArgument('maintenance_status', $data['filter']['maintenance_status'])
+				->setArgument('sort', $data['filter']['sort'])
+				->setArgument('sortorder', $data['filter']['sortorder']))
+		)
+	);
+
 	$col2 -> addItem(NBSP_BG());
 	$col2 -> addItem(bold('(' . $data['host_groups'][$group_name]['num_of_hosts']. ')'));
 	$table_row = new CRow([
@@ -278,6 +297,20 @@ function addParentGroupClass($data, &$element, $parent_group_name) {
 			$data['host_groups'][$parent_group_name]['groupid']
 		);
 	}
+}
+
+function add_expanded_parent_group($data, $group_name) {
+	$expanded = [];
+	$parent_group_name = $data['host_groups'][$group_name]['parent_group_name'];
+
+	if ( $parent_group_name != '' &&
+		array_key_exists($parent_group_name, $data['host_groups']) ) {
+		$p_g_id = $data['host_groups'][$parent_group_name]['groupid'];
+		$expanded = [$p_g_id];
+		$expanded = array_merge(add_expanded_parent_group($data, $parent_group_name), $expanded);
+	}
+
+	return $expanded;
 }
 
 function NBSP_BG() {
