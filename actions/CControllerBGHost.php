@@ -170,8 +170,8 @@ abstract class CControllerBGHost extends CController {
 		}
 		$groups_for_hosts_from_all_groups = array_unique($groups_for_hosts_from_all_groups);
 
-		// Remove child groups that do not have hosts to show on > 1 pages
 		/*
+		// Remove child groups that do not have hosts to show on > 1 pages
 		$groups_to_show = $host_groups;
 		foreach ($host_groups as $group_name => $group_data) {
 			$parent_group_name = $group_data['parent_group_name'];
