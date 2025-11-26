@@ -27,6 +27,7 @@ use CRoleHelper;
 use CTabFilterProfile;
 use CUrl;
 use CWebUser;
+use CCsrfTokenHelper;
 
 class CControllerBGHostView extends CControllerBGHost {
 
@@ -55,7 +56,8 @@ class CControllerBGHostView extends CControllerBGHost {
 			'filter_show_counter' =>	'in 1,0',
 			'filter_counters' =>		'in 1',
 			'filter_reset' =>		'in 1',
-			'counter_index' =>		'ge 0'
+			'counter_index' =>		'ge 0',
+			'expanded_groups' =>	'string'
 		];
 
 		$ret = $this->validateInput($fields);
@@ -93,9 +95,14 @@ class CControllerBGHostView extends CControllerBGHost {
 
 	protected function doAction(): void {
 		$filter_tabs = [];
-		$profile = (new CTabFilterProfile(static::FILTER_IDX, static::FILTER_FIELDS_DEFAULT))
-			->read()
-			->setInput($this->cleanInput($this->getInputAll()));
+		$profile = (new CTabFilterProfile(static::FILTER_IDX, static::FILTER_FIELDS_DEFAULT))->read();
+
+		if ($this->hasInput('filter_reset')) {
+			$profile->reset();
+		}
+		else {
+			$profile->setInput($this->cleanInput($this->getInputAll()));
+		}
 
 		foreach ($profile->getTabsWithDefaults() as $index => $filter_tab) {
 			if ($index == $profile->selected) {
@@ -110,6 +117,11 @@ class CControllerBGHostView extends CControllerBGHost {
 		$refresh_curl = new CUrl('zabbix.php');
 		$filter['action'] = 'bghost.view.refresh';
 		array_map([$refresh_curl, 'setArgument'], array_keys($filter), $filter);
+		$expanded_groups = [];
+		if ($this->hasInput('expanded_groups')) {
+			$expanded_groups = explode(",", $this->getInput('expanded_groups'));
+			$refresh_curl->setArgument('expanded_groups', $this->getInput('expanded_groups'));
+		}
 
 		$data = [
 			'refresh_url' => $refresh_curl->getUrl(),
@@ -123,12 +135,13 @@ class CControllerBGHostView extends CControllerBGHost {
 				'selected' => $profile->selected,
 				'support_custom_time' => 0,
 				'expanded' => $profile->expanded,
-				'page' => $filter['page']
+				'page' => $filter['page'],
+				'csrf_token' => CCsrfTokenHelper::get('tabfilter')
 			]
-		] + $this->getData($filter);
+		] + $this->getData($filter, $expanded_groups);
 
 		$response = new CControllerResponseData($data);
-		$response->setTitle(_('Hosts'));
+		$response->setTitle(_('Hosts tree'));
 		$this->setResponse($response);
 	}
 }

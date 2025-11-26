@@ -54,7 +54,8 @@ class CControllerBGHostViewRefresh extends CControllerBGHostView {
 		else {
 			$this->getInputs($filter, array_keys($filter));
 			$filter = $this->cleanInput($filter);
-			$prepared_data = $this->getData($filter);
+			$expanded_groups = explode(',', $this->getInput('expanded_groups', '0'));
+			$prepared_data = $this->getData($filter, $expanded_groups);
 
 			$view_url = (new CUrl())
 				->setArgument('action', 'bghost.view')

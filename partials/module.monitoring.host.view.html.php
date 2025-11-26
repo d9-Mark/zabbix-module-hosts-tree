@@ -26,13 +26,15 @@ $table = (new CTableInfo());
 
 $view_url = $data['view_curl']->getUrl();
 
+$at_least_one_host_to_show = false;
+$paging_line_added = false;
+
 $table->setHeader([
 	make_sorting_header(_('Name'), 'name', $data['sort'], $data['sortorder'], $view_url),
 	(new CColHeader(_('Interface'))),
 	(new CColHeader(_('Availability'))),
 	(new CColHeader(_('Tags'))),
 	// Fix: problems renamed to triggers to distinguish from the problems counter column
-	(new CColHeader(_('Problems'))),
 	make_sorting_header(_('Status'), 'status', $data['sort'], $data['sortorder'], $view_url),
 	(new CColHeader(_('Latest data'))),
 	(new CColHeader(_('Problems'))),
@@ -45,29 +47,36 @@ foreach ($data['host_groups'] as $group_name => $group) {
 	if ($group['parent_group_name'] == '') {
 		// Add only top level groups, children will be added recursively in addGroupRow()
 		$rows = [];
-		addGroupRow($data, $rows, $group_name, '', 0, $child_stat);
-
+		addGroupRow($data, $rows, $group_name, '', 0, $child_stat, $at_least_one_host_to_show, $paging_line_added, $form, $table);
 		foreach ($rows as $row) {
 			$table->addRow($row);
 		}
 	}
 }
 
-$form->addItem([$table,	$data['paging']]);
+if (!$paging_line_added)
+	$form->addItem([$table, $data['paging']]);
+else
+	$form->addItem($table);
 
 echo $form;
 
 // Adds one Group to the table (recursively calls itself for all sub-groups)
-function addGroupRow($data, &$rows, $group_name, $parent_group_name, $level, &$child_stat) {
+function addGroupRow($data, &$rows, $group_name, $parent_group_name, $level, &$child_stat, &$at_least_one_host_to_show, &$paging_line_added, &$form, &$table) {
+
 	$interface_types = [INTERFACE_TYPE_AGENT, INTERFACE_TYPE_SNMP, INTERFACE_TYPE_JMX, INTERFACE_TYPE_IPMI];
 
 	$group = $data['host_groups'][$group_name];
 
 	$host_rows = [];
 	foreach ($group['hosts'] as $hostid) {
+		if (!array_key_exists($hostid, $data['hosts']))
+			continue;
+
+		$at_least_one_host_to_show = true;
+
 		$host = $data['hosts'][$hostid];
 		$host_name = (new CLinkAction($host['name']))->setMenuPopup(CMenuPopupHelper::getHost($hostid));
-
 		$interface = null;
 		if ($host['interfaces']) {
                         foreach ($host['interfaces'] as $index => $value) {
@@ -116,33 +125,16 @@ function addGroupRow($data, &$rows, $group_name, $parent_group_name, $level, &$c
 			$problems_link->addClass(ZBX_STYLE_PROBLEM_ICON_LINK);
 		}
 
-		$maintenance_icon = '';
-
-		if ($host['status'] == HOST_STATUS_MONITORED && $host['maintenance_status'] == HOST_MAINTENANCE_STATUS_ON) {
-			if (array_key_exists($host['maintenanceid'], $data['maintenances'])) {
-				$maintenance = $data['maintenances'][$host['maintenanceid']];
-				$maintenance_icon = makeMaintenanceIcon($host['maintenance_type'], $maintenance['name'],
-					$maintenance['description']
-				);
-			}
-			else {
-				$maintenance_icon = makeMaintenanceIcon($host['maintenance_type'],
-					_('Inaccessible maintenance'), ''
-				);
-			}
-		}
-
 		$col1 = new CCol();
 		for($i = 0; $i <= (6 + $level*5); $i++) {
 			$col1 -> addItem(NBSP_BG());
 		}
-		$col1 -> addItem($host_name) -> addItem($maintenance_icon);
+		$col1 -> addItem($host_name);
 		$table_row_host = new CRow([
 			$col1,
 			(new CCol(getHostInterface($interface)))->addClass(ZBX_STYLE_NOWRAP),
 			getHostAvailabilityTable($host['interfaces']),
 			$host['tags'],
-			$problems_link,
 			($host['status'] == HOST_STATUS_MONITORED)
 				? (new CSpan(_('Enabled')))->addClass(ZBX_STYLE_GREEN)
 				: (new CSpan(_('Disabled')))->addClass(ZBX_STYLE_RED),
@@ -152,22 +144,12 @@ function addGroupRow($data, &$rows, $group_name, $parent_group_name, $level, &$c
 						(new CUrl('zabbix.php'))
 							->setArgument('action', 'latest.view')
 							->setArgument('filter_set', '1')
-							->setArgument('filter_hostids', [$host['hostid']])
-					)
-					: _('Latest data')
-			],
-			[
-				$data['allowed_ui_problems']
-					? new CLink(_('Problems'),
-						(new CUrl('zabbix.php'))
-							->setArgument('action', 'problem.view')
-							->setArgument('filter_name', '')
-							->setArgument('severities', $data['filter']['severities'])
 							->setArgument('hostids', [$host['hostid']])
 					)
-					: _('Problems'),
-				CViewHelper::showNum($total_problem_count)
+					: (new CSpan(_('Latest data')))->addClass(ZBX_STYLE_DISABLED),
+                    CViewHelper::showNum($host['items_count'])
 			],
+			$problems_link,
 			$host['graphs']
 				? [
 					new CLink(_('Graphs'),
@@ -209,10 +191,18 @@ function addGroupRow($data, &$rows, $group_name, $parent_group_name, $level, &$c
 		$host_rows[] = $table_row_host;
 	}
 
+	if ($at_least_one_host_to_show && !$paging_line_added) {
+		$paging_line_added = true;
+		$col2 = (new CCol()) -> setColSpan(11);
+		$col2 -> addItem($data['paging']);
+		$paging_row = (new CRow([$col2]))->setAttribute('data-group_id_27', 27);
+		$host_rows[] = $paging_row;
+	}
+
 	$subgroup_rows=[];
 
 	foreach ($data['host_groups'][$group_name]['children'] as $child_group_name) {
-		addGroupRow($data, $subgroup_rows, $child_group_name, $group_name, $level + 1, $my_stat);
+		addGroupRow($data, $subgroup_rows, $child_group_name, $group_name, $level + 1, $my_stat, $at_least_one_host_to_show, $paging_line_added, $form, $table);
 	}
 
 
@@ -249,7 +239,26 @@ function addGroupRow($data, &$rows, $group_name, $parent_group_name, $level, &$c
 		$col2 -> addItem(NBSP_BG());
 	}
 	$col2 -> addItem($toggle_tag);
-	$col2 -> addItem(bold(end($group_name_arr)));
+
+
+	$expanded_groups = [$data['host_groups'][$group_name]['groupid']];
+	// Build all expanded groups if this group to be expanded (for URL)
+	$p_g_name = $data['host_groups'][$group_name]['parent_group_name'];
+	if ($p_g_name != '')
+		$expanded_groups = array_merge(add_expanded_parent_group($data, $group_name), $expanded_groups);
+
+	$col2 -> addItem(
+		bold(
+			new CLink(end($group_name_arr), (new CUrl('zabbix.php'))
+				->setArgument('action', 'bghost.view')
+				->setArgument('expanded_groups', implode(',', $expanded_groups))
+				->setArgument('status', $data['filter']['severities'])
+				->setArgument('maintenance_status', $data['filter']['maintenance_status'])
+				->setArgument('sort', $data['filter']['sort'])
+				->setArgument('sortorder', $data['filter']['sortorder']))
+		)
+	);
+
 	$col2 -> addItem(NBSP_BG());
 	$col2 -> addItem(bold('(' . $data['host_groups'][$group_name]['num_of_hosts']. ')'));
 	$table_row = new CRow([
@@ -259,7 +268,9 @@ function addGroupRow($data, &$rows, $group_name, $parent_group_name, $level, &$c
 			-> setColSpan(6)
 	]);
 
-	if ($data['host_groups'][$group_name]['is_collapsed'] && $parent_group_name != '')
+	if ($data['host_groups'][$group_name]['is_collapsed'] && 
+		$parent_group_name != '' &&
+		$data['host_groups'][$parent_group_name]['is_collapsed'])
 		$table_row->addClass(ZBX_STYLE_DISPLAY_NONE);
 
 	// We don't render here, but just add rows to the array
@@ -286,6 +297,20 @@ function addParentGroupClass($data, &$element, $parent_group_name) {
 			$data['host_groups'][$parent_group_name]['groupid']
 		);
 	}
+}
+
+function add_expanded_parent_group($data, $group_name) {
+	$expanded = [];
+	$parent_group_name = $data['host_groups'][$group_name]['parent_group_name'];
+
+	if ( $parent_group_name != '' &&
+		array_key_exists($parent_group_name, $data['host_groups']) ) {
+		$p_g_id = $data['host_groups'][$parent_group_name]['groupid'];
+		$expanded = [$p_g_id];
+		$expanded = array_merge(add_expanded_parent_group($data, $parent_group_name), $expanded);
+	}
+
+	return $expanded;
 }
 
 function NBSP_BG() {

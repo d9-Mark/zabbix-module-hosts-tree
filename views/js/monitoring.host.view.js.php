@@ -47,6 +47,10 @@
 			const url = new Curl('zabbix.php', false);
 			url.setArgument('action', 'bghost.view.refresh');
 			this.refresh_simple_url = url.getUrl();
+			expanded_groups = this.refresh_url.getArgument('expanded_groups');
+			if (expanded_groups) {
+				this.refresh_simple_url += '&expanded_groups=' + expanded_groups;
+			}
 
 			this.initTabFilter(filter_options);
 
@@ -145,7 +149,6 @@
 
 		refresh() {
 			this.setLoading();
-
 			const params = this.refresh_url.getArgumentsObject();
 			const exclude = ['action', 'filter_src', 'filter_show_counter', 'filter_custom_time', 'filter_name'];
 			const post_data = Object.keys(params)
@@ -163,7 +166,6 @@
 				type: 'post',
 				dataType: 'json'
 			});
-
 			return this.bindDataEvents(this.deferred);
 		},
 
@@ -247,6 +249,45 @@
 
 			if (this.deferred) {
 				this.deferred.abort();
+			}
+		},
+
+		groupToFromRefreshUrl(groupid, collapsed) {
+			this.refresh_url.unsetArgument('expanded_groups');
+			const regex = /\&expanded_groups=([\d,]+)/g;
+			const found = this.refresh_simple_url.match(regex);
+			if (found !== null) {
+				// There is at least one group in expanded_groups in URL
+				this.refresh_simple_url = this.refresh_simple_url.replace(found[0], ''); // Remove expanded_groups from URL
+				group_ids = found[0].split('=')[1].split(',');
+				idx = group_ids.indexOf(groupid);
+				if (idx == -1) {
+					// This group does not exist in expaned_groups=
+					if (!collapsed){
+						this.refresh_simple_url += '&expanded_groups=' + group_ids.join(',') + ',' + groupid;
+					} else {
+						this.refresh_simple_url += '&expanded_groups=' + group_ids.join(',');
+					}
+				} else {
+					// This group exists in expanded_groups=
+					if (collapsed) {
+						// It's collapsed so remove it from expanded_groups=
+						group_ids.splice(idx);
+						if (group_ids.length > 0) {
+							this.refresh_simple_url += '&expanded_groups=' + group_ids.join(',');
+						}
+					}
+				}
+			} else {
+				// There is no expanded_groups in URL yet
+				if (!collapsed) {
+					this.refresh_simple_url += '&expanded_groups=' + groupid;
+				}
+			}
+
+			if (collapsed) {
+				this.refresh_url.unsetArgument('page');
+
 			}
 		},
 

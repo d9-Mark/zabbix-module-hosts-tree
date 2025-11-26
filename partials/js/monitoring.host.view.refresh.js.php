@@ -31,11 +31,13 @@
 	var data = <?php
 		echo '{';
 		foreach ($data['host_groups'] as $group_name => $group) {
-			if (count($group['children']) > 0) {
-				echo "'".$group['groupid']."':[";
-				print_children($data, $group);
-				echo "],";
-			}
+			//if (array_key_exists('children', $group)) {
+			//	if (count($group['children']) > 0) {
+					echo "'".$group['groupid']."':[";
+					print_children($data, $group);
+					echo "],";
+			//	}
+			//}
 		}
 		echo '}';
 		function print_children($data, $group) {
@@ -53,52 +55,53 @@
 			}
 		} ?>;
 
-	function toggleChevronCollapsed($chevron, collapsed) {
-		$chevron
-			.removeClass(collapsed ? '<?= ZBX_STYLE_ARROW_DOWN ?>' : '<?= ZBX_STYLE_ARROW_RIGHT ?>')
-			.addClass(collapsed ? '<?= ZBX_STYLE_ARROW_RIGHT ?>' : '<?= ZBX_STYLE_ARROW_DOWN ?>');
-	}
-
 	function isChevronCollapsed($chevron) {
 		return $chevron.hasClass('<?= ZBX_STYLE_ARROW_RIGHT ?>');
-	}
-
-	function toggleGroup(group_id, collapsed) {
-		var $chevron = $('.js-toggle[data-group_id_' + group_id + '="' + group_id + '"] span'),
-			$rows = $('tr[data-group_id_' + group_id + '="' + group_id + '"]');
-
-		toggleChevronCollapsed($chevron, collapsed);
-
-		$rows.toggleClass('<?= ZBX_STYLE_DISPLAY_NONE ?>', collapsed);
 	}
 
 	$('.js-toggle').on('click', function() {
 		var $toggle = $(this),
 			collapsed = !isChevronCollapsed($toggle.find('span'));
 		var group_id = 0;
-		for (const key  in $toggle[0].attributes) {
+		for (const key in $toggle[0].attributes) {
 			var attr = $toggle[0].attributes[key];
 			if (attr.name.startsWith('data-')) {
 				group_id = attr.value
 				break;
 			}
-		};
-		toggleGroup(group_id, collapsed);
-		if (collapsed) {
-			if (group_id in data) {
-				collapseSubgroup(group_id);
-			}
 		}
-	});
+		if (!collapsed) {
+			var parent_group_id = 0;
+			var parents = {}; // Key=group_id, Value=parent_group_id or 0 if root level
+			// Expanding, find parent group
+			for (var gid in data) {
+				if (!(gid in parents))
+					parents[gid] = 0;
+				for (var j = 0; j < data[gid].length; j++) // For all children for given group
+					parents[data[gid][j]] = gid;
 
-	function collapseSubgroup(group_id) {
-		toggleGroup(group_id, true);
-		for (var i = 0; i < data[group_id].length; i++) {
-			if (data[group_id][i] in data) {
-				collapseSubgroup(data[group_id][i]);
-			} else {
-				toggleGroup(data[group_id][i], true);
+				if (data[gid].indexOf(group_id) > -1) { // This group is a child of data[i] group
+					parent_group_id = data[gid];
+					// Collapse all other children
+					for (var j in data[gid]) {
+						var child_group_id = data[gid][j];
+						if (child_group_id != group_id)
+							view.groupToFromRefreshUrl(child_group_id, true);
+					}
+				}
+			}
+
+			if ( parent_group_id == 0) {
+				// Root level group collapsed, hide all other root level groups
+				for (var gid in parents)
+					if (parents[gid] == 0 && // Root level
+						gid != group_id)
+						view.groupToFromRefreshUrl(gid, true);
 			}
 		}
-	}
+
+		view.groupToFromRefreshUrl(group_id, collapsed);
+
+		view.refresh();
+	});
 </script>
