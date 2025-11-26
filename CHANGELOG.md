@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [7.0.0] - 2025-11-26
+### Changed
+- Fix filter: do not take values from Hosts page, store Hosts tree filter fields separately.
+- Fix Latest data link.
+- Fix showing hosts with tags.
+- Show hosts for only one expanded group.
+- Turn names of group into links for expansion.
+
 ## [6.0.2] - 2025-07-18
 ### Changed
 - Fixed call to undefined function getHostDashboards for Zabbix >= 7.0.14
