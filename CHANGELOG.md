@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [7.0.1] - 2025-12-02
+### Changed
+- Fixed module version. When released 7.0.0 did not updated it.
+
 ## [7.0.0] - 2025-11-26
 ### Changed
 - Fix filter: do not take values from Hosts page, store Hosts tree filter fields separately.
