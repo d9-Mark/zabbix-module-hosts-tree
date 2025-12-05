@@ -247,6 +247,15 @@ function addGroupRow($data, &$rows, $group_name, $parent_group_name, $level, &$c
 	if ($p_g_name != '')
 		$expanded_groups = array_merge(add_expanded_parent_group($data, $group_name), $expanded_groups);
 
+	// Calculate total problem count for this group
+	$total_problem_count = 0;
+	foreach ($data['host_groups'][$group_name]['problem_count'] as $severity => $count) {
+		if (($count > 0 && $data['filter']['severities'] && in_array($severity, $data['filter']['severities']))
+				|| (!$data['filter']['severities'] && $count > 0)) {
+			$total_problem_count += $count;
+		}
+	}
+
 	$col2 -> addItem(
 		bold(
 			new CLink(end($group_name_arr), (new CUrl('zabbix.php'))
@@ -261,6 +270,14 @@ function addGroupRow($data, &$rows, $group_name, $parent_group_name, $level, &$c
 
 	$col2 -> addItem(NBSP_BG());
 	$col2 -> addItem(bold('(' . $data['host_groups'][$group_name]['num_of_hosts']. ')'));
+
+	// Add problem count next to group name if group is collapsed and has problems
+	if ($data['host_groups'][$group_name]['is_collapsed'] && $total_problem_count > 0) {
+		$col2 -> addItem(NBSP_BG());
+		$col2 -> addItem((new CSpan('Problems: ' . $total_problem_count))
+			->addClass('text-warning')
+		);
+	}
 	$table_row = new CRow([
 		$col2,
 		$group_problems_div,
