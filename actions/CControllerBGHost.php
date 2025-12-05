@@ -494,101 +494,66 @@ abstract class CControllerBGHost extends CController {
 	 * @return void
 	 */
 	protected function calculateGroupProblems(array &$host_groups, array $filter): void {
-		// Get all group IDs at once
-		$all_group_ids = [];
-		foreach ($host_groups as $group_name => $group) {
-			$all_group_ids[] = $group['groupid'];
-		}
-
-		if (empty($all_group_ids)) {
-			return;
-		}
-
-		// Get all hosts for all groups in one call
-		$hosts = API::Host()->get([
-			'output' => ['hostid', 'name'],
-			'selectGroups' => ['groupid'],
-			'groupids' => $all_group_ids,
-			'evaltype' => $filter['evaltype'],
-			'tags' => $filter['tags'],
-			'inheritedTags' => true,
-			'search' => [
-				'name' => ($filter['name'] === '') ? null : $filter['name'],
-				'ip' => ($filter['ip'] === '') ? null : $filter['ip'],
-				'dns' => ($filter['dns'] === '') ? null : $filter['dns']
-			],
-			'filter' => [
-				'status' => ($filter['status'] == -1) ? null : $filter['status'],
-				'port' => ($filter['port'] === '') ? null : $filter['port'],
-				'maintenance_status' => ($filter['maintenance_status'] == HOST_MAINTENANCE_STATUS_ON)
-					? null
-					: HOST_MAINTENANCE_STATUS_OFF
-			]
-		]);
-
-		if (empty($hosts)) {
-			return;
-		}
-
-		$all_host_ids = array_column($hosts, 'hostid');
-
-		// Get all triggers for all hosts in one call
-		$triggers = API::Trigger()->get([
-			'output' => [],
-			'selectHosts' => ['hostid'],
-			'hostids' => $all_host_ids,
-			'skipDependent' => true,
-			'monitored' => true,
-			'preservekeys' => true
-		]);
-
-		if (empty($triggers)) {
-			return;
-		}
-
-		// Get all problems for all triggers in one call
-		$problems = API::Problem()->get([
-			'output' => ['eventid', 'objectid', 'severity'],
-			'objectids' => array_keys($triggers),
-			'source' => EVENT_SOURCE_TRIGGERS,
-			'object' => EVENT_OBJECT_TRIGGER,
-			'suppressed' => ($filter['show_suppressed'] == ZBX_PROBLEM_SUPPRESSED_TRUE) ? null : false
-		]);
-
-		// Create mapping of trigger -> host -> groups
-		$trigger_host_groups = [];
-		foreach ($triggers as $triggerid => $trigger) {
-			foreach ($trigger['hosts'] as $host) {
-				$hostid = $host['hostid'];
-				// Find which groups this host belongs to
-				foreach ($hosts as $host_data) {
-					if ($host_data['hostid'] == $hostid) {
-						foreach ($host_data['groups'] as $group) {
-							$trigger_host_groups[$triggerid][] = $group['groupid'];
-						}
-						break;
-					}
-				}
-			}
-		}
-
-		// Count problems by group and severity
-		foreach ($problems as $problem) {
-			$triggerid = $problem['objectid'];
-			$severity = $problem['severity'];
+		// For each group, get hosts and count problems
+		foreach ($host_groups as $group_name => &$group) {
+			$groupid = $group['groupid'];
 			
-			if (isset($trigger_host_groups[$triggerid])) {
-				foreach ($trigger_host_groups[$triggerid] as $groupid) {
-					// Find the group name for this groupid
-					foreach ($host_groups as $group_name => &$group) {
-						if ($group['groupid'] == $groupid) {
-							$group['problem_count'][$severity]++;
-						}
-					}
-					unset($group);
-				}
+			// Get hosts for this specific group only
+			$hosts = API::Host()->get([
+				'output' => ['hostid'],
+				'groupids' => [$groupid],
+				'evaltype' => $filter['evaltype'],
+				'tags' => $filter['tags'],
+				'inheritedTags' => true,
+				'search' => [
+					'name' => ($filter['name'] === '') ? null : $filter['name'],
+					'ip' => ($filter['ip'] === '') ? null : $filter['ip'],
+					'dns' => ($filter['dns'] === '') ? null : $filter['dns']
+				],
+				'filter' => [
+					'status' => ($filter['status'] == -1) ? null : $filter['status'],
+					'port' => ($filter['port'] === '') ? null : $filter['port'],
+					'maintenance_status' => ($filter['maintenance_status'] == HOST_MAINTENANCE_STATUS_ON)
+						? null
+						: HOST_MAINTENANCE_STATUS_OFF
+				]
+			]);
+
+			if (empty($hosts)) {
+				continue;
+			}
+
+			$host_ids = array_column($hosts, 'hostid');
+
+			// Get triggers for this group's hosts
+			$triggers = API::Trigger()->get([
+				'output' => [],
+				'hostids' => $host_ids,
+				'skipDependent' => true,
+				'monitored' => true,
+				'preservekeys' => true
+			]);
+
+			if (empty($triggers)) {
+				continue;
+			}
+
+			// Get problems for this group's triggers
+			$problems = API::Problem()->get([
+				'output' => ['severity'],
+				'objectids' => array_keys($triggers),
+				'source' => EVENT_SOURCE_TRIGGERS,
+				'object' => EVENT_OBJECT_TRIGGER,
+				'suppressed' => ($filter['show_suppressed'] == ZBX_PROBLEM_SUPPRESSED_TRUE) ? null : false
+			]);
+
+			// Count problems by severity for this group only
+			foreach ($problems as $problem) {
+				$severity = $problem['severity'];
+				$group['problem_count'][$severity]++;
 			}
 		}
+		unset($group);
 
 		// Propagate problem counts to parent groups
 		foreach ($host_groups as $group_name => &$group) {
