@@ -494,16 +494,11 @@ abstract class CControllerBGHost extends CController {
 	 * @return void
 	 */
 	protected function calculateGroupProblems(array &$host_groups, array $filter): void {
-		// First, calculate problems for leaf groups (groups without children)
+		// First, calculate problems for ALL groups (including their direct hosts)
 		foreach ($host_groups as $group_name => &$group) {
-			if (!empty($group['children'])) {
-				// Skip parent groups for now - we'll calculate them from children
-				continue;
-			}
-			
 			$groupid = $group['groupid'];
 			
-			// Get hosts for this specific group only
+			// Get DIRECT hosts for this specific group (not from child groups)
 			$hosts = API::Host()->get([
 				'output' => ['hostid'],
 				'groupids' => [$groupid],
@@ -530,7 +525,7 @@ abstract class CControllerBGHost extends CController {
 
 			$host_ids = array_column($hosts, 'hostid');
 
-			// Get triggers for this group's hosts
+			// Get triggers for this group's direct hosts
 			$triggers = API::Trigger()->get([
 				'output' => [],
 				'hostids' => $host_ids,
@@ -552,7 +547,7 @@ abstract class CControllerBGHost extends CController {
 				'suppressed' => ($filter['show_suppressed'] == ZBX_PROBLEM_SUPPRESSED_TRUE) ? null : false
 			]);
 
-			// Count problems by severity for this group only
+			// Count problems by severity for this group's direct hosts
 			foreach ($problems as $problem) {
 				$severity = $problem['severity'];
 				$group['problem_count'][$severity]++;
@@ -560,36 +555,41 @@ abstract class CControllerBGHost extends CController {
 		}
 		unset($group);
 
-		// Now propagate problem counts from children to parents
-		foreach ($host_groups as $group_name => &$group) {
-			if (!empty($group['children'])) {
-				$this->addChildProblemsToParent($host_groups, $group_name);
-			}
-		}
-		unset($group);
+		// Now propagate problem counts from children to parents  
+		// Process from bottom to top (deepest children first)
+		$this->propagateChildProblemsToParents($host_groups);
 	}
 
 	/**
-	 * Add child group problems to parent group
+	 * Propagate child group problems to parent groups from bottom-up
 	 *
-	 * @param array  $host_groups All host groups data
-	 * @param string $group_name  Parent group name
+	 * @param array $host_groups All host groups data
 	 *
 	 * @return void
 	 */
-	protected function addChildProblemsToParent(array &$host_groups, string $group_name): void {
-		if (!isset($host_groups[$group_name])) {
-			return;
+	protected function propagateChildProblemsToParents(array &$host_groups): void {
+		// Find groups by depth level to process bottom-up
+		$groups_by_depth = [];
+		foreach ($host_groups as $group_name => $group) {
+			$depth = substr_count($group_name, '/');
+			$groups_by_depth[$depth][] = $group_name;
 		}
-
-		foreach ($host_groups[$group_name]['children'] as $child_group_name) {
-			if (isset($host_groups[$child_group_name])) {
-				// First, recursively process child's children
-				$this->addChildProblemsToParent($host_groups, $child_group_name);
-				
-				// Then add child problems to parent (after child has been fully calculated)
-				foreach ($host_groups[$child_group_name]['problem_count'] as $severity => $count) {
-					$host_groups[$group_name]['problem_count'][$severity] += $count;
+		
+		// Sort by depth (deepest first)
+		krsort($groups_by_depth);
+		
+		// Process from deepest to shallowest
+		foreach ($groups_by_depth as $depth => $groups_at_depth) {
+			foreach ($groups_at_depth as $group_name) {
+				if (!empty($host_groups[$group_name]['children'])) {
+					// Add all children's problems to this parent
+					foreach ($host_groups[$group_name]['children'] as $child_group_name) {
+						if (isset($host_groups[$child_group_name])) {
+							foreach ($host_groups[$child_group_name]['problem_count'] as $severity => $count) {
+								$host_groups[$group_name]['problem_count'][$severity] += $count;
+							}
+						}
+					}
 				}
 			}
 		}
