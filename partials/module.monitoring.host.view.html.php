@@ -225,27 +225,11 @@ function addGroupRow($data, &$rows, $group_name, $parent_group_name, $level, &$c
 	foreach ($data['host_groups'][$group_name]['problem_count'] as $severity => $count) {
 		if (($count > 0 && $data['filter']['severities'] && in_array($severity, $data['filter']['severities']))
 				|| (!$data['filter']['severities'] && $count > 0)) {
-			
-			// For collapsed groups, make problem counts clickable to navigate to Problems page
-			if ($data['host_groups'][$group_name]['is_collapsed']) {
-				$problem_span = (new CLink($count, (new CUrl('zabbix.php'))
-					->setArgument('action', 'problem.view')
-					->setArgument('filter_name', '')
-					->setArgument('filter_set', '1')
-					->setArgument('severities', [$severity])
-					->setArgument('groupids', [$data['host_groups'][$group_name]['groupid']])))
-					->addClass(ZBX_STYLE_PROBLEM_ICON_LIST_ITEM)
-					->addClass(CSeverityHelper::getStatusStyle($severity))
-					->setAttribute('title', CSeverityHelper::getName($severity).': Click to view problems');
-			} else {
-				// For expanded groups, show non-clickable count
-				$problem_span = (new CSpan($count))
-					->addClass(ZBX_STYLE_PROBLEM_ICON_LIST_ITEM)
-					->addClass(CSeverityHelper::getStatusStyle($severity))
-					->setAttribute('title', CSeverityHelper::getName($severity));
-			}
-				
-			$group_problems_div->addItem($problem_span);
+			$group_problems_div->addItem((new CSpan($count))
+				->addClass(ZBX_STYLE_PROBLEM_ICON_LIST_ITEM)
+				->addClass(CSeverityHelper::getStatusStyle($severity))
+				->setAttribute('title', CSeverityHelper::getName($severity))
+			);
 		}
 	}
 

@@ -190,7 +190,6 @@ abstract class CControllerBGHost extends CController {
 		$host_groups = $groups_to_show;
 		unset($groups_to_show);
 		*/
-
 		return [
 			'paging' => $paging,
 			'hosts' => $hosts_from_all_groups_hostid_as_key,
@@ -492,5 +491,4 @@ abstract class CControllerBGHost extends CController {
 
 		return $input;
 	}
-
 }
