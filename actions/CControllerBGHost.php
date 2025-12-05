@@ -494,8 +494,13 @@ abstract class CControllerBGHost extends CController {
 	 * @return void
 	 */
 	protected function calculateGroupProblems(array &$host_groups, array $filter): void {
-		// For each group, get hosts and count problems
+		// First, calculate problems for leaf groups (groups without children)
 		foreach ($host_groups as $group_name => &$group) {
+			if (!empty($group['children'])) {
+				// Skip parent groups for now - we'll calculate them from children
+				continue;
+			}
+			
 			$groupid = $group['groupid'];
 			
 			// Get hosts for this specific group only
@@ -555,7 +560,7 @@ abstract class CControllerBGHost extends CController {
 		}
 		unset($group);
 
-		// Propagate problem counts to parent groups
+		// Now propagate problem counts from children to parents
 		foreach ($host_groups as $group_name => &$group) {
 			if (!empty($group['children'])) {
 				$this->addChildProblemsToParent($host_groups, $group_name);
@@ -579,13 +584,13 @@ abstract class CControllerBGHost extends CController {
 
 		foreach ($host_groups[$group_name]['children'] as $child_group_name) {
 			if (isset($host_groups[$child_group_name])) {
-				// Add child problems to parent
+				// First, recursively process child's children
+				$this->addChildProblemsToParent($host_groups, $child_group_name);
+				
+				// Then add child problems to parent (after child has been fully calculated)
 				foreach ($host_groups[$child_group_name]['problem_count'] as $severity => $count) {
 					$host_groups[$group_name]['problem_count'][$severity] += $count;
 				}
-				
-				// Recursively add problems from child's children
-				$this->addChildProblemsToParent($host_groups, $child_group_name);
 			}
 		}
 	}
