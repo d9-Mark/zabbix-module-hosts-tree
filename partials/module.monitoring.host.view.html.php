@@ -273,7 +273,7 @@ function addGroupRow($data, &$rows, $group_name, $parent_group_name, $level, &$c
 
 	// Add problem count next to group name (for debugging - always show)
 	$col2 -> addItem(NBSP_BG());
-	$col2 -> addItem((new CSpan('Problems: ' . $total_problem_count)))
+	$col2 -> addItem((new CSpan('Problems: ' . $total_problem_count))
 		->addClass('text-warning')
 	);
 	$table_row = new CRow([
