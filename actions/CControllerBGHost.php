@@ -135,6 +135,9 @@ abstract class CControllerBGHost extends CController {
 					$this->group_add_num_of_hosts_from_child($host_groups, $group_name, $subgroup_name);
 			}
 		}
+
+		// Calculate problem counts for all groups (including collapsed ones)
+		$this->calculateGroupProblems($host_groups, $filter);
 		$hosts_from_all_groups = [];
 		$total_number_of_hosts = 0;
 
@@ -490,5 +493,119 @@ abstract class CControllerBGHost extends CController {
 		}
 
 		return $input;
+	}
+
+	/**
+	 * Calculate problem counts for all groups
+	 *
+	 * @param array $host_groups All host groups data
+	 * @param array $filter      Filter options
+	 *
+	 * @return void
+	 */
+	protected function calculateGroupProblems(array &$host_groups, array $filter): void {
+		foreach ($host_groups as $group_name => &$group) {
+			$groupid = $group['groupid'];
+			
+			// Get all hosts in this group
+			$hosts = API::Host()->get([
+				'output' => ['hostid'],
+				'groupids' => [$groupid],
+				'evaltype' => $filter['evaltype'],
+				'tags' => $filter['tags'],
+				'inheritedTags' => true,
+				'search' => [
+					'name' => ($filter['name'] === '') ? null : $filter['name'],
+					'ip' => ($filter['ip'] === '') ? null : $filter['ip'],
+					'dns' => ($filter['dns'] === '') ? null : $filter['dns']
+				],
+				'filter' => [
+					'status' => ($filter['status'] == -1) ? null : $filter['status'],
+					'port' => ($filter['port'] === '') ? null : $filter['port'],
+					'maintenance_status' => ($filter['maintenance_status'] == HOST_MAINTENANCE_STATUS_ON)
+						? null
+						: HOST_MAINTENANCE_STATUS_OFF
+				]
+			]);
+
+			if (empty($hosts)) {
+				continue;
+			}
+
+			$host_ids = array_column($hosts, 'hostid');
+
+			// Get triggers for these hosts
+			$triggers = API::Trigger()->get([
+				'output' => [],
+				'selectHosts' => ['hostid'],
+				'hostids' => $host_ids,
+				'skipDependent' => true,
+				'monitored' => true,
+				'preservekeys' => true
+			]);
+
+			if (empty($triggers)) {
+				continue;
+			}
+
+			// Get problems for these triggers
+			$problems = API::Problem()->get([
+				'output' => ['eventid', 'objectid', 'severity'],
+				'objectids' => array_keys($triggers),
+				'source' => EVENT_SOURCE_TRIGGERS,
+				'object' => EVENT_OBJECT_TRIGGER,
+				'suppressed' => ($filter['show_suppressed'] == ZBX_PROBLEM_SUPPRESSED_TRUE) ? null : false
+			]);
+
+			// Count problems by severity
+			$problem_counts = [];
+			for ($severity = TRIGGER_SEVERITY_COUNT - 1; $severity >= TRIGGER_SEVERITY_NOT_CLASSIFIED; $severity--) {
+				$problem_counts[$severity] = 0;
+			}
+
+			foreach ($problems as $problem) {
+				$problem_counts[$problem['severity']]++;
+			}
+
+			// Update group problem counts
+			foreach ($problem_counts as $severity => $count) {
+				$group['problem_count'][$severity] = $count;
+			}
+		}
+		unset($group);
+
+		// Propagate problem counts to parent groups
+		foreach ($host_groups as $group_name => &$group) {
+			if (!empty($group['children'])) {
+				$this->addChildProblemsToParent($host_groups, $group_name);
+			}
+		}
+		unset($group);
+	}
+
+	/**
+	 * Add child group problems to parent group
+	 *
+	 * @param array  $host_groups All host groups data
+	 * @param string $group_name  Parent group name
+	 *
+	 * @return void
+	 */
+	protected function addChildProblemsToParent(array &$host_groups, string $group_name): void {
+		if (!isset($host_groups[$group_name])) {
+			return;
+		}
+
+		foreach ($host_groups[$group_name]['children'] as $child_group_name) {
+			if (isset($host_groups[$child_group_name])) {
+				// Add child problems to parent
+				foreach ($host_groups[$child_group_name]['problem_count'] as $severity => $count) {
+					$host_groups[$group_name]['problem_count'][$severity] += $count;
+				}
+				
+				// Recursively add problems from child's children
+				$this->addChildProblemsToParent($host_groups, $child_group_name);
+			}
+		}
 	}
 }
