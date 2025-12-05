@@ -21,3 +21,14 @@
       border-left-color: #0275b8; }
     .treeview:hover .arrow-down, .treeview:focus .arrow-down {
       border-top-color: #0275b8; }
+
+/* Clickable problem count styling for host groups */
+.problem-icon-list a.problem-icon-list-item {
+  text-decoration: none;
+  color: inherit;
+}
+
+.problem-icon-list a.problem-icon-list-item:hover {
+  opacity: 0.8;
+  text-decoration: none;
+}
